@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>
+    <%= title %>
+  </title>
+  <link rel='stylesheet' href='/stylesheets/style.css' />
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+  <script src="https://code.jquery.com/jquery-3.5.1.js" integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc="
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
+    integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN"
+    crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
+    integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
+    crossorigin="anonymous"></script>
+  <script src="/javascripts/function.js"></script>
+  <script src="/javascripts/moment-with-locales.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <label for="espnumber">ESP Number</label>
+    <div class="row">
+      <div class="col">
+        <input type="text" class="form-control" id="espnumber">
+      </div>
+      <div class="col-auto">
+        <button type="button" class="btn btn-primary" onclick="getespsBySearch()">Search</button>
+      </div>
+    </div>
+
+    <!--
+        Gemini api integration [under test]
+    -->
+
+
+    <br>
+    <div>
+      <h6>Gemini API [UNDER TEST]</h6>
+      <input type="file" id="fileInput" accept="image/*">
+      <button id="runButton">Run Generative AI</button>
+      <div id="resultContainer"></div>
+
+      <script type="module">
+          import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+  
+          // Access your API key (see "Set up your API key" above)
+          const genAI = new GoogleGenerativeAI('YOUR_API_HERE');
+  
+          // Converts a File object to a GoogleGenerativeAI.Part object.
+          async function fileToGenerativePart(file) {
+              const base64EncodedDataPromise = new Promise((resolve) => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                  reader.readAsDataURL(file);
+              });
+              return {
+                  inlineData: { data: await base64EncodedDataPromise, mimeType: file.type },
+              };
+          }
+  
+          // For text-and-images input (multimodal), use the gemini-pro-vision model
+          const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+    
+          async function run(prompt) {
+              const fileInputEl = document.querySelector("#fileInput");
+              const imageParts = await Promise.all(
+                  [...fileInputEl.files].map(fileToGenerativePart)
+              );
+  
+              const result = await model.generateContent([prompt, ...imageParts]);
+              const response = await result.response;
+              const text = response.text();
+              return text
+          }
+
+          async function check(){
+            const prompt0 = "Is there an ambulance in the image?,the response should be yes or no only"
+            const prompt1 = "desribe the content of the image and give the exact number of vehicules in the image";
+            const response = await run(prompt0)
+
+            console.log('response :' ,response);
+
+            if(response.replace(/[\s,]/g, '').toLowerCase()== 'yes'){
+              const note = 'Turning on the GREEN Light because there is an ambulance!! '
+              controlTrafficLight('192.168.8.105','FLIP')
+              const description = note+',  description : '+ await run(prompt1)
+              document.querySelector("#resultContainer").textContent = description;
+            }else if(response.replace(/[\s,]/g, '').toLowerCase()== 'no'){
+              const note = 'No Modification on the TrafficLight because there is no ambulance!! '
+              const description = note+',  description : '+ await run(prompt1)
+              document.querySelector("#resultContainer").textContent = description;
+            }
+
+            
+          }
+  
+          // Call run when the button is clicked
+          document.querySelector("#runButton").addEventListener("click", check);
+      </script>
+    </div>
+
+     <!--
+        Gemini api integration [under test]
+    -->
+
+    <div class="my-4"></div>
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Map</h5>
+        <div class="container-fluid">
+          <div class="row">
+            <div class="col-1 d-flex align-items-center">
+              <div class="image-container">
+                <figcaption>F1</figcaption>
+                <img id="ledImage" src="images/default.png" alt="LED">
+              </div>
+            </div>
+            <div class="col-1 d-flex align-items-center">
+              <div class="image-container">
+                <figcaption>F2</figcaption>
+                <img id="ledImage2" src="images/default.png" alt="LED">
+              </div>
+            </div>
+
+            <div class="col">
+               <div id="map" style="width: 100%; height: 400px;"></div>
+            </div>
+          </div>
+          
+          <script>
+            "use strict";
+            var customIcon = L.icon({
+              iconUrl: 'images/traffic.png', // Replace with the path to your image file
+              //popupAnchor: [popupX, popupY], // Customize the popup anchor if needed
+              iconSize: [102, 102], // Adjust the size as per your image
+              iconAnchor: [16, 32],
+            });
+
+            var map;
+            var marker;
+            const latlng = {
+              lat: 33.25034815042843,
+              lng: -8.434284173844972
+            };
+            map = L.map('map').setView(latlng, 19);
+            marker = L.marker(latlng, {
+              icon: customIcon,
+            }).addTo(map);
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              maxZoom: 21,
+              attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+            map.flyTo(latlng, 19);
+
+            const inputField = document.getElementById('espnumber');
+            inputField.addEventListener('keydown', function (event) {
+              if (event.key === 'Enter') {
+                getespsBySearch()
+              }
+            });
+          </script>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+      $(document).ready(function () {
+        // Function to fetch and update the LED state
+        function updateState() {
+          pingHighLed();
+        }
+        setInterval(updateState, 500);
+      });
+    </script>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">ESP Number</th>
+          <th scope="col">State</th>
+          <th scope="col">Date/Time</th>
+          <th scope="col">View</th>
+          <th scope="col">Change State</th>
+          <th scope="col">Power</th>
+        </tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+    <div class="container">
+      <div class="d-flex justify-content-center">
+        <a href="/create-esp" class="btn btn-success btn-lg">Create a Traffic light</a>
+      </div>
+    </div>
+
+  </div>
+</body>
+
+</html>

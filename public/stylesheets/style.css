@@ -1,0 +1,40 @@
+body {
+  padding: 50px;
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+}
+
+a {
+  color: #00B7FF;
+}
+ #map { height: 180px; }
+
+.map-responsive{
+  overflow: hidden;
+  padding-bottom: 50%;
+  position: relative;
+  height: 0;
+}
+
+.map-responsive iframe{
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 100%;
+  position: absolute;
+}
+
+.image-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 10vh; /* Adjust this value to control the centering within the viewport */
+}
+
+#ledImage {
+  width: 80px; /* Adjust the width as desired */
+  height: auto; /* Maintain the image's aspect ratio */
+}
+#ledImage2 {
+  width: 80px; /* Adjust the width as desired */
+  height: auto; /* Maintain the image's aspect ratio */
+}
